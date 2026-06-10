@@ -10,22 +10,22 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:        #F0EDE8;
-    --surface:   #FAFAF7;
-    --border:    #D9D5CE;
-    --ink:       #1A1814;
-    --ink2:      #6B6760;
-    --ink3:      #9E9B96;
-    --accent:    #2D5016;
-    --accent-lt: #EAF2E0;
-    --red:       #C0392B;
-    --red-lt:    #FDEDEC;
-    --amber:     #B7601A;
-    --amber-lt:  #FEF3E7;
-    --blue:      #1A4A8A;
-    --blue-lt:   #EAF0FB;
+    --bg:        #F1F5F9;
+    --surface:   #FFFFFF;
+    --border:    #E2E8F0;
+    --ink:       #1E293B;
+    --ink2:      #475569;
+    --ink3:      #94A3B8;
+    --accent:    #2563EB;
+    --accent-lt: #EFF6FF;
+    --red:       #DC2626;
+    --red-lt:    #FEF2F2;
+    --amber:     #D97706;
+    --amber-lt:  #FFFBEB;
+    --blue:      #1D4ED8;
+    --blue-lt:   #DBEAFE;
     --radius:    12px;
-    --shadow:    0 2px 16px rgba(0,0,0,0.08);
+    --shadow:    0 2px 16px rgba(37,99,235,0.08);
   }
 
   body {
@@ -38,7 +38,7 @@
 
   /* ── TOP BAR ── */
   .topbar {
-    background: var(--accent);
+    background: #1E40AF;
     color: #fff;
     padding: 14px 32px;
     display: flex;
@@ -47,6 +47,7 @@
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.3px;
+    box-shadow: 0 2px 8px rgba(30,64,175,0.25);
   }
   .topbar-logo {
     font-family: 'DM Serif Display', serif;
@@ -71,7 +72,7 @@
     font-family: 'DM Serif Display', serif;
     font-size: 34px;
     line-height: 1.15;
-    color: var(--ink);
+    color: #1E40AF;
     margin-bottom: 6px;
   }
   .login-sub {
@@ -184,10 +185,9 @@
   .alert-warn   { background: var(--amber-lt); color: var(--amber); border: 1px solid #f0c090; }
 
   /* ── UPLOAD PANEL ── */
-  #uploadPanel { display: none; }
 
   .school-badge {
-    background: var(--accent);
+    background: linear-gradient(135deg, #2563EB, #1E40AF);
     color: #fff;
     display: inline-flex;
     align-items: center;
@@ -197,12 +197,14 @@
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
   }
 
   .section-title {
     font-family: 'DM Serif Display', serif;
     font-size: 26px;
     margin-bottom: 4px;
+    color: #1E40AF;
   }
   .section-sub {
     font-size: 14px;
@@ -228,8 +230,8 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
+    color: #2563EB;
+    border-bottom-color: #2563EB;
   }
 
   /* Step cards */
@@ -247,7 +249,7 @@
   .step-num {
     width: 28px; height: 28px;
     border-radius: 50%;
-    background: var(--accent);
+    background: #2563EB;
     color: #fff;
     font-size: 13px;
     font-weight: 800;
@@ -266,7 +268,7 @@
     font-size: 14px;
     margin-top: 12px;
   }
-  thead tr { background: #ECEBE6; }
+  thead tr { background: #EFF6FF; }
   th {
     text-align: left;
     padding: 10px 12px;
@@ -282,7 +284,7 @@
     vertical-align: middle;
   }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #F5F4F0; }
+  tr:hover td { background: #F8FAFF; }
 
   .badge {
     display: inline-flex;
@@ -332,7 +334,7 @@
   }
   .preview-row.header { font-weight: 700; color: var(--ink2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
   .preview-row.ok     { color: var(--ink); }
-  .preview-row.dup    { background: #FFFBF0; color: var(--amber); }
+  .preview-row.dup    { background: #FFFBEB; color: var(--amber); }
   .preview-row.err    { background: #FEF6F5; color: var(--red); }
 
   .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
@@ -343,7 +345,7 @@
     background: #fff; color: var(--ink2);
     transition: all 0.15s;
   }
-  .chip.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .chip.active { border-color: #2563EB; background: #2563EB; color: #fff; }
 
   .divider { height: 1px; background: var(--border); margin: 24px 0; }
 
@@ -393,7 +395,7 @@
 
   /* Format hints */
   .format-box {
-    background: #ECEBE6;
+    background: #EFF6FF;
     border-radius: 8px;
     padding: 14px 16px;
     margin-bottom: 14px;
@@ -409,8 +411,8 @@
     font-weight: 700;
     margin: 2px 3px;
   }
-  .col-required { background: #D5E8C4; color: var(--accent); }
-  .col-optional { background: #E8E7E2; color: var(--ink2); }
+  .col-required { background: #DBEAFE; color: #1D4ED8; }
+  .col-optional { background: #F1F5F9; color: var(--ink2); }
 
   /* ── OTP hint ── */
   .otp-hint {
@@ -465,7 +467,7 @@
 </div>
 
 <!-- UPLOAD PANEL -->
-<div class="page" id="uploadPanel">
+<div class="page hidden" id="uploadPanel">
 
   <div class="school-badge" id="schoolBadge">🏫 —</div>
 
@@ -701,14 +703,11 @@ async function doLogin() {
 
   try {
     // Fetch school by code
-    const schools = await api(`schools?code=eq.${code}&select=id,name,code,clerk_otp,is_active`);
+    const schools = await api(`schools?code=eq.${code}&select=id,name,code,clerk_otp`);
     if (!schools || schools.length === 0) {
       throw new Error('School code not found. Please check and try again.');
     }
     const school = schools[0];
-    if (!school.is_active) {
-      throw new Error('This school account is inactive. Contact your principal or support.');
-    }
     if (!school.clerk_otp) {
       throw new Error('OTP has not been set for this school. Ask your principal to generate it from the app.');
     }
@@ -725,7 +724,12 @@ async function doLogin() {
     $('schoolBadge').textContent = `🏫 ${school.name} (${school.code})`;
     document.title = `${school.name} — Clerk Portal`;
 
-    await loadData();
+    try {
+      await loadData();
+    } catch(loadErr) {
+      console.error('loadData error:', loadErr);
+      // Still show the panel even if data load fails
+    }
 
   } catch(e) {
     showAlert('loginAlert', e.message);
@@ -752,16 +756,21 @@ function doLogout() {
 
 // ── LOAD DATA ────────────────────────────────────────────
 async function loadData() {
-  const [cls, stu] = await Promise.all([
-    api(`classes?school_id=eq.${session.schoolId}&order=name.asc`),
-    api(`students?school_id=eq.${session.schoolId}&order=class_id.asc,roll_number.asc`),
-  ]);
-  classes  = cls  || [];
-  students = stu  || [];
-  renderClassTable();
-  renderClassChips();
-  renderStudentView();
-  updateFilterClassDropdown();
+  try {
+    const [cls, stu] = await Promise.all([
+      api(`classes?school_id=eq.${session.schoolId}&order=name.asc`),
+      api(`students?school_id=eq.${session.schoolId}&order=class_id.asc,roll_number.asc`),
+    ]);
+    classes  = cls  || [];
+    students = stu  || [];
+    renderClassTable();
+    renderClassChips();
+    renderStudentView();
+    updateFilterClassDropdown();
+  } catch(e) {
+    console.error('loadData error:', e);
+    alert('Error loading data: ' + e.message);
+  }
 }
 
 // ── TAB SWITCH ────────────────────────────────────────────
@@ -793,7 +802,6 @@ async function addClass() {
         school_id: session.schoolId,
         teacher_id: null,
         subjects: [],
-        created_by_clerk: true,
       }),
     });
     classes.push(created);
@@ -846,7 +854,6 @@ function renderClassTable() {
     return `<tr>
       <td><strong>${cls.name}</strong></td>
       <td><span class="badge badge-blue">${count} student${count !== 1 ? 's' : ''}</span></td>
-      <td style="color:var(--ink3); font-size:12px;">${cls.created_by_clerk ? '📋 Clerk' : '👨‍🏫 Teacher'}</td>
       <td>
         <button class="btn-danger" onclick="deleteClass('${cls.id}')">🗑 Delete</button>
       </td>
@@ -855,7 +862,7 @@ function renderClassTable() {
 
   $('classTableWrap').innerHTML = `
     <table>
-      <thead><tr><th>Class Name</th><th>Students</th><th>Created By</th><th>Action</th></tr></thead>
+      <thead><tr><th>Class Name</th><th>Students</th><th>Action</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
@@ -885,7 +892,7 @@ function handleClassExcel(e) {
       for (const name of names) {
         const [created] = await api('classes', {
           method: 'POST',
-          body: JSON.stringify({ name, school_id: session.schoolId, teacher_id: null, subjects: [], created_by_clerk: true }),
+          body: JSON.stringify({ name, school_id: session.schoolId, teacher_id: null, subjects: [] }),
         });
         classes.push(created);
       }
@@ -1030,14 +1037,13 @@ async function doImport() {
 
   try {
     const records = toImport.map(r => ({
-      name:       r.name,
+      name:        r.name,
       roll_number: r.roll,
-      mobile:     r.mobile || '',
-      email:      r.email  || '',
-      class_id:   selectedUploadClass.id,
-      school_id:  session.schoolId,
+      mobile:      r.mobile || null,
+      email:       r.email  || null,
+      class_id:    selectedUploadClass.id,
+      school_id:   session.schoolId,
       subject_ids: [],
-      approval_status: 'approved',
     }));
 
     const inserted = await api('students', {
