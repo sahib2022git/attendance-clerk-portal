@@ -503,6 +503,7 @@
           </div>
           <button class="btn-primary" style="width:auto; padding:12px 20px; flex-shrink:0;" onclick="addClass()">Add Class</button>
         </div>
+        <div id="addClassMsg" class="alert hidden" style="margin-top:12px;"></div>
       </div>
     </div>
 
@@ -812,8 +813,18 @@ async function addClass() {
     renderClassTable();
     renderClassChips();
     updateFilterClassDropdown();
+    // Show success message
+    const msgEl = $('addClassMsg');
+    msgEl.className = 'alert alert-success';
+    msgEl.textContent = '\u2713 "' + fullName + '" added successfully.';
+    msgEl.classList.remove('hidden');
+    setTimeout(() => msgEl.classList.add('hidden'), 3000);
   } catch(e) {
-    alert('Error adding class: ' + e.message);
+    const msgEl = $('addClassMsg');
+    msgEl.className = 'alert alert-error';
+    msgEl.textContent = 'Error: ' + e.message;
+    msgEl.classList.remove('hidden');
+    setTimeout(() => msgEl.classList.add('hidden'), 4000);
   }
 }
 
