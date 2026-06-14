@@ -479,6 +479,7 @@
     <div class="tab active" id="tab1" onclick="switchTab(1)">📚 Manage Classes</div>
     <div class="tab" id="tab2" onclick="switchTab(2)">👨‍🎓 Upload Students</div>
     <div class="tab" id="tab3" onclick="switchTab(3)">📊 View All Students</div>
+    <div class="tab" id="tab4" onclick="switchTab(4)">📉 Shortage Report</div>
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -647,6 +648,43 @@
 
   </div>
 
+  <!-- ══════════════════════════════════════════
+       TAB 4 — SHORTAGE REPORT
+  ══════════════════════════════════════════ -->
+  <div id="tabContent4" class="hidden">
+
+    <div style="margin-bottom:18px;">
+      <strong style="font-size:15px;">Shortage Report</strong>
+      <p style="font-size:13px;color:var(--ink2);margin-top:4px;line-height:1.5;">
+        Select a class to generate a printable PDF showing each student's lecture shortage per subject.
+      </p>
+    </div>
+
+    <!-- Class selector -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Select Class</div>
+      <div id="shortageClassChips" style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:13px;color:var(--ink3);">No classes yet — add classes in Manage Classes tab first.</span>
+      </div>
+    </div>
+
+    <!-- Generate button (shown after class selected) -->
+    <div id="shortageGenArea" style="display:none;">
+      <div class="card" style="background:linear-gradient(135deg,#EFF6FF 0%,#EDE9FE 100%);border:1.5px solid #BFDBFE;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:700;color:#1E40AF;margin-bottom:5px;" id="shortageClassLabel">📉 Class Selected</div>
+        <div style="font-size:13px;color:#475569;margin-bottom:14px;">
+          The PDF will show each student's shortage per subject and total shortage. Nil = no shortage.
+        </div>
+        <button class="btn-primary" style="width:auto;padding:11px 28px;" onclick="generateShortageReport()">
+          📄 Download Shortage PDF
+        </button>
+      </div>
+    </div>
+
+    <div id="shortageMsg" class="alert hidden" style="margin-top:8px;"></div>
+
+  </div>
+
 </div>
 
 <!-- ════════════════════════════════════════════════════════
@@ -679,6 +717,7 @@ let session = null;   // { schoolId, schoolName, schoolCode }
 let classes  = [];
 let students = [];
 let selectedUploadClass = null;
+let selectedShortageClass = null;
 let pendingRows = [];
 
 // ── COLOR PALETTE FOR CLASSES ─────────────────────────────────
@@ -802,12 +841,13 @@ async function loadData() {
 
 // ── TAB SWITCH ────────────────────────────────────────────
 function switchTab(n) {
-  [1,2,3].forEach(i => {
+  [1,2,3,4].forEach(i => {
     $(`tab${i}`).classList.toggle('active', i === n);
     $(`tabContent${i}`).classList.toggle('hidden', i !== n);
   });
   if (n === 2) renderClassChips();
   if (n === 3) renderStudentView();
+  if (n === 4) renderShortageClassChips();
 }
 
 // ── TAB 1: CLASSES ────────────────────────────────────────
@@ -1240,6 +1280,210 @@ function exportAllStudents() {
   const code = params.get('code');
   if (code) $('inSchoolCode').value = code.toUpperCase();
 })();
+
+// ── TAB 4: SHORTAGE REPORT ───────────────────────────────────
+
+function renderShortageClassChips() {
+  const wrap = $('shortageClassChips');
+  if (!wrap) return;
+  if (classes.length === 0) {
+    wrap.innerHTML = '<span style="font-size:13px;color:var(--ink3);">No classes yet — add classes in Manage Classes tab first.</span>';
+    return;
+  }
+  wrap.innerHTML = classes.map((cls, idx) => {
+    const c = CHIP_COLORS[idx % CHIP_COLORS.length];
+    const isActive = selectedShortageClass?.id === cls.id;
+    const style = isActive
+      ? `background:${c.activeBg};border-color:${c.activeBg};color:#fff;box-shadow:0 3px 10px rgba(0,0,0,0.18);transform:scale(1.05);font-weight:800;`
+      : `background:${c.bg};border-color:${c.border};color:${c.text};`;
+    return `<div class="chip" style="${style}" onclick="selectShortageClass('${cls.id}')">${cls.name}</div>`;
+  }).join('');
+}
+
+function selectShortageClass(classId) {
+  selectedShortageClass = classes.find(c => c.id === classId) || null;
+  renderShortageClassChips();
+  const genArea = $('shortageGenArea');
+  const label   = $('shortageClassLabel');
+  if (selectedShortageClass) {
+    const subjCount = (selectedShortageClass.subjects || []).length;
+    label.textContent = '📉 ' + selectedShortageClass.name + ' — ' + subjCount + ' subject' + (subjCount !== 1 ? 's' : '');
+    genArea.style.display = 'block';
+  } else {
+    genArea.style.display = 'none';
+  }
+}
+
+async function generateShortageReport() {
+  if (!selectedShortageClass) return;
+  const cls   = selectedShortageClass;
+  const msgEl = $('shortageMsg');
+  msgEl.className = 'alert hidden';
+
+  try {
+    // Fetch all attendance records for this class
+    const attendanceRecords = await api('attendance?class_id=eq.' + cls.id + '&select=*');
+
+    // Students for this class sorted by roll number
+    const classStudents = students
+      .filter(s => s.class_id === cls.id)
+      .sort((a, b) => parseInt(a.roll_number) - parseInt(b.roll_number));
+
+    if (classStudents.length === 0) {
+      msgEl.className = 'alert alert-error';
+      msgEl.textContent = 'No students found in this class. Upload students first.';
+      msgEl.classList.remove('hidden');
+      return;
+    }
+
+    const subjects = cls.subjects || [];
+    if (subjects.length === 0) {
+      msgEl.className = 'alert alert-error';
+      msgEl.textContent = 'No subjects found for this class. Teachers need to add subjects first.';
+      msgEl.classList.remove('hidden');
+      return;
+    }
+
+    // Per-subject stats: total lectures + required
+    const subjectStats = subjects.map(sub => {
+      const subRecords       = attendanceRecords.filter(r => r.subject_id === sub.id);
+      const totalLectures    = subRecords.length;
+      const requiredLectures = Math.ceil(totalLectures * 0.75);
+      return { id: sub.id, name: sub.name, totalLectures, requiredLectures, records: subRecords };
+    });
+
+    // Per-student shortage per subject
+    const studentData = classStudents.map(student => {
+      let totalShortage = 0;
+      const subShortages = subjectStats.map(sub => {
+        const attended = sub.records.filter(r => r.records && r.records[student.id] === 'present').length;
+        const shortage = Math.max(0, sub.requiredLectures - attended);
+        totalShortage += shortage;
+        return { attended, shortage };
+      });
+      return { ...student, subShortages, totalShortage };
+    });
+
+    // Build HTML and open print window
+    const html = buildShortageHTML(cls, subjectStats, studentData);
+    const win  = window.open('', '_blank');
+    if (!win) {
+      alert('Popup blocked! Please allow popups for this site and try again.');
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 700);
+
+  } catch(e) {
+    msgEl.className = 'alert alert-error';
+    msgEl.textContent = 'Error: ' + e.message;
+    msgEl.classList.remove('hidden');
+  }
+}
+
+function buildShortageHTML(cls, subjectStats, studentData) {
+  const now         = new Date();
+  const displayDate = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Subject column headers (name + total in parentheses)
+  const subjectHeaders = subjectStats.map(sub =>
+    '<th style="padding:10px 12px;border:1px solid #3730a3;text-align:center;min-width:90px;">' +
+      sub.name + '<br/>' +
+      '<span style="font-size:10px;font-weight:400;opacity:0.8;">(Total: ' + sub.totalLectures + ')</span>' +
+    '</th>'
+  ).join('');
+
+  // Student rows
+  const tableRows = studentData.map((s, idx) => {
+    const rowBg   = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+    const subCells = s.subShortages.map(({ shortage }) => {
+      const color = shortage > 0 ? '#dc2626' : '#16a34a';
+      return '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:' + color + ';">' +
+               (shortage > 0 ? shortage : 'Nil') +
+             '</td>';
+    }).join('');
+    const totalColor  = s.totalShortage > 0 ? '#dc2626' : '#16a34a';
+    const totalBorder = s.totalShortage > 0 ? 'border-left:3px solid #dc2626;' : 'border-left:3px solid #16a34a;';
+    return '<tr style="background:' + rowBg + ';' + totalBorder + '">' +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#1e1b4b;">' + s.roll_number + '</td>' +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">' + s.name + '</td>' +
+             subCells +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:800;color:' + totalColor + ';background:' + (s.totalShortage > 0 ? '#fef2f2' : '#f0fdf4') + ';">' +
+               (s.totalShortage > 0 ? s.totalShortage : 'Nil') +
+             '</td>' +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;"></td>' +
+           '</tr>';
+  }).join('');
+
+  const totalCols = 2 + subjectStats.length + 2;
+  const atRisk    = studentData.filter(s => s.totalShortage > 0).length;
+
+  return '<!DOCTYPE html>' +
+'<html><head><meta charset="UTF-8"/>' +
+'<style>' +
+'* { box-sizing:border-box; margin:0; padding:0; }' +
+'body { font-family:Arial,sans-serif; font-size:13px; color:#1e293b; background:#fff; }' +
+'.hdr { background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%); color:#fff; padding:24px 28px; }' +
+'.school-name { font-size:20px; font-weight:bold; }' +
+'.rpt-title { font-size:14px; color:#a5b4fc; margin-top:5px; }' +
+'.meta-row { display:flex; gap:20px; margin-top:10px; font-size:12px; color:#c7d2fe; flex-wrap:wrap; }' +
+'.meta-val { font-weight:bold; color:#fff; }' +
+'.stats-bar { display:flex; border-bottom:2px solid #e2e8f0; }' +
+'.stat-box { flex:1; padding:14px 16px; text-align:center; border-right:1px solid #e2e8f0; }' +
+'.stat-box:last-child { border-right:none; }' +
+'.stat-num { font-size:26px; font-weight:900; line-height:1; }' +
+'.stat-lbl { font-size:11px; color:#64748b; margin-top:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }' +
+'.tbl-wrap { padding:18px 24px 24px; }' +
+'.tbl-lbl { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }' +
+'table { width:100%; border-collapse:collapse; }' +
+'thead tr { background:#1e1b4b; color:#fff; }' +
+'thead th { padding:10px 12px; font-size:12px; font-weight:700; }' +
+'.footer { padding:12px 24px; border-top:1px solid #e2e8f0; font-size:11px; color:#94a3b8; }' +
+'@media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }' +
+'</style></head><body>' +
+
+'<div class="hdr">' +
+  '<div class="school-name">' + (session && session.schoolName ? session.schoolName : 'School Attendance Report') + '</div>' +
+  '<div class="rpt-title">&#128202; Shortage Report &mdash; ' + cls.name + '</div>' +
+  '<div class="meta-row">' +
+    '<div>Generated on: <span class="meta-val">' + displayDate + '</span></div>' +
+    '<div>Total Students: <span class="meta-val">' + studentData.length + '</span></div>' +
+    '<div>Required: <span class="meta-val">75% of total lectures</span></div>' +
+  '</div>' +
+'</div>' +
+
+'<div class="stats-bar">' +
+  '<div class="stat-box"><div class="stat-num" style="color:#1e1b4b;">' + studentData.length + '</div><div class="stat-lbl">Total Students</div></div>' +
+  '<div class="stat-box"><div class="stat-num" style="color:#dc2626;">' + atRisk + '</div><div class="stat-lbl">At Risk</div></div>' +
+  '<div class="stat-box"><div class="stat-num" style="color:#16a34a;">' + (studentData.length - atRisk) + '</div><div class="stat-lbl">No Shortage</div></div>' +
+  '<div class="stat-box"><div class="stat-num" style="color:#4338ca;">' + subjectStats.length + '</div><div class="stat-lbl">Subjects</div></div>' +
+'</div>' +
+
+'<div class="tbl-wrap">' +
+  '<div class="tbl-lbl">Student Shortage Summary</div>' +
+  '<table>' +
+    '<thead><tr>' +
+      '<th style="width:60px;padding:10px 12px;border:1px solid #3730a3;text-align:center;">Roll No</th>' +
+      '<th style="padding:10px 12px;border:1px solid #3730a3;text-align:left;">Student Name</th>' +
+      subjectHeaders +
+      '<th style="padding:10px 12px;border:1px solid #3730a3;text-align:center;background:#312e81;">Total Shortage</th>' +
+      '<th style="padding:10px 12px;border:1px solid #3730a3;min-width:80px;">Remarks</th>' +
+    '</tr></thead>' +
+    '<tbody>' +
+      (studentData.length > 0 ? tableRows : '<tr><td colspan="' + totalCols + '" style="text-align:center;padding:20px;color:#94a3b8;">No students found.</td></tr>') +
+    '</tbody>' +
+  '</table>' +
+'</div>' +
+
+'<div class="footer">' +
+  '<div>This report was generated by the Students Attendance App (Clerk Portal). Class: ' + cls.name + '</div>' +
+'</div>' +
+
+'</body></html>';
+}
+
 </script>
 </body>
 </html>
