@@ -492,14 +492,18 @@
       <div class="step-body">
         <div class="step-head">Add a New Class</div>
         <div class="step-desc">Create class names like "10-A", "11-Science", "12-Commerce-B".</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; background:linear-gradient(135deg,#EFF6FF 0%,#EDE9FE 100%); padding:16px 18px; border-radius:12px; border:1.5px solid #BFDBFE;">
           <div style="flex:1; min-width:160px;">
-            <label style="margin-bottom:4px;">Class Name</label>
-            <input type="text" id="newClassName" placeholder="e.g. 10-A" style="margin-bottom:0;" />
+            <label style="margin-bottom:6px; color:#1D4ED8; font-size:12px; letter-spacing:0.5px;">✏️ CLASS NAME</label>
+            <input type="text" id="newClassName" placeholder="e.g. 10-A"
+              style="margin-bottom:0; border-color:#3B82F6; background:#fff; border-width:2px;"
+              onfocus="this.style.borderColor='#1D4ED8'" onblur="this.style.borderColor='#3B82F6'" />
           </div>
           <div style="flex:1; min-width:120px;">
-            <label style="margin-bottom:4px;">Section / Division</label>
-            <input type="text" id="newClassSection" placeholder="optional" style="margin-bottom:0;" />
+            <label style="margin-bottom:6px; color:#6D28D9; font-size:12px; letter-spacing:0.5px;">🔤 SECTION / DIVISION</label>
+            <input type="text" id="newClassSection" placeholder="optional"
+              style="margin-bottom:0; border-color:#8B5CF6; background:#fff; border-width:2px;"
+              onfocus="this.style.borderColor='#6D28D9'" onblur="this.style.borderColor='#8B5CF6'" />
           </div>
           <button class="btn-primary" style="width:auto; padding:12px 20px; flex-shrink:0;" onclick="addClass()">Add Class</button>
         </div>
@@ -616,13 +620,19 @@
   ══════════════════════════════════════════ -->
   <div id="tabContent3" class="hidden">
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
       <strong style="font-size:15px;">All Students in School</strong>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <select id="filterClass" onchange="renderStudentView()" style="padding:8px 12px; font-size:13px; margin-bottom:0; width:auto;">
-          <option value="">All Classes</option>
-        </select>
-        <button class="btn-secondary" onclick="exportAllStudents()">⬇ Export Excel</button>
+      <button class="btn-secondary" onclick="exportAllStudents()">⬇ Export Excel</button>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center;">
+      <select id="filterClass" onchange="renderStudentView()" style="padding:9px 12px; font-size:13px; margin-bottom:0; width:auto; border-radius:8px; border:1.5px solid var(--border); flex:1; min-width:140px;">
+        <option value="">All Classes</option>
+      </select>
+      <div style="position:relative; flex:2; min-width:180px;">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+        <input type="text" id="studentSearch" placeholder="Search name or roll no…"
+          oninput="renderStudentView()"
+          style="padding:9px 12px 9px 34px;font-size:13px;margin-bottom:0;border-radius:8px;border:1.5px solid var(--border);width:100%;" />
       </div>
     </div>
 
@@ -670,6 +680,22 @@ let classes  = [];
 let students = [];
 let selectedUploadClass = null;
 let pendingRows = [];
+
+// ── COLOR PALETTE FOR CLASSES ─────────────────────────────────
+const CHIP_COLORS = [
+  { bg:'#DBEAFE', border:'#3B82F6', text:'#1E40AF', activeBg:'#2563EB' },
+  { bg:'#EDE9FE', border:'#8B5CF6', text:'#5B21B6', activeBg:'#7C3AED' },
+  { bg:'#DCFCE7', border:'#22C55E', text:'#15803D', activeBg:'#16A34A' },
+  { bg:'#FFEDD5', border:'#F97316', text:'#C2410C', activeBg:'#EA580C' },
+  { bg:'#FCE7F3', border:'#EC4899', text:'#BE185D', activeBg:'#DB2777' },
+  { bg:'#CCFBF1', border:'#14B8A6', text:'#0F766E', activeBg:'#0D9488' },
+  { bg:'#FEF9C3', border:'#EAB308', text:'#A16207', activeBg:'#CA8A04' },
+  { bg:'#E0E7FF', border:'#6366F1', text:'#4338CA', activeBg:'#4F46E5' },
+];
+function classColor(classId) {
+  const idx = classes.findIndex(c => c.id === classId);
+  return CHIP_COLORS[(idx >= 0 ? idx : 0) % CHIP_COLORS.length];
+}
 
 // ── HELPERS ───────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -813,7 +839,6 @@ async function addClass() {
     renderClassTable();
     renderClassChips();
     updateFilterClassDropdown();
-    // Show success message
     const msgEl = $('addClassMsg');
     msgEl.className = 'alert alert-success';
     msgEl.textContent = '\u2713 "' + fullName + '" added successfully.';
@@ -862,11 +887,16 @@ function renderClassTable() {
     return;
   }
 
-  const rows = classes.map(cls => {
+  const rows = classes.map((cls, idx) => {
+    const c = CHIP_COLORS[idx % CHIP_COLORS.length];
     const count = students.filter(s => s.class_id === cls.id).length;
     return `<tr>
-      <td><strong>${cls.name}</strong></td>
-      <td><span class="badge badge-blue">${count} student${count !== 1 ? 's' : ''}</span></td>
+      <td>
+        <span style="display:inline-block;padding:4px 14px;border-radius:100px;font-size:13px;font-weight:700;background:${c.bg};color:${c.text};border:1.5px solid ${c.border};">
+          ${cls.name}
+        </span>
+      </td>
+      <td><span class="badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};">${count} student${count !== 1 ? 's' : ''}</span></td>
       <td>
         <button class="btn-danger" onclick="deleteClass('${cls.id}')">🗑 Delete</button>
       </td>
@@ -942,10 +972,14 @@ function renderClassChips() {
     wrap.innerHTML = `<span style="font-size:13px; color:var(--ink3);">No classes yet — go to Manage Classes tab first.</span>`;
     return;
   }
-  wrap.innerHTML = classes.map(cls =>
-    `<div class="chip ${selectedUploadClass?.id === cls.id ? 'active' : ''}"
-      onclick="selectUploadClass('${cls.id}')">${cls.name}</div>`
-  ).join('');
+  wrap.innerHTML = classes.map((cls, idx) => {
+    const c = CHIP_COLORS[idx % CHIP_COLORS.length];
+    const isActive = selectedUploadClass?.id === cls.id;
+    const style = isActive
+      ? `background:${c.activeBg};border-color:${c.activeBg};color:#fff;box-shadow:0 3px 10px rgba(0,0,0,0.18);transform:scale(1.05);font-weight:800;`
+      : `background:${c.bg};border-color:${c.border};color:${c.text};`;
+    return `<div class="chip" style="${style}" onclick="selectUploadClass('${cls.id}')">${cls.name}</div>`;
+  }).join('');
 }
 
 function selectUploadClass(id) {
@@ -1108,25 +1142,46 @@ function updateFilterClassDropdown() {
 
 function renderStudentView() {
   const filterClassId = $('filterClass')?.value || '';
-  const filtered = filterClassId
+  const query = ($('studentSearch')?.value || '').toLowerCase().trim();
+
+  let filtered = filterClassId
     ? students.filter(s => s.class_id === filterClassId)
     : students;
+
+  if (query) {
+    filtered = filtered.filter(s =>
+      (s.name || '').toLowerCase().includes(query) ||
+      (s.roll_number || '').toString().toLowerCase().includes(query)
+    );
+  }
 
   if (filtered.length === 0) {
     $('allStudentsWrap').innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">👨‍🎓</div>
-        <p>No students found.</p>
+        <p>${query ? 'No students match your search.' : 'No students found.'}</p>
       </div>`;
     return;
   }
 
   const rows = filtered.map(s => {
     const cls = classes.find(c => c.id === s.class_id);
+    const c = cls ? classColor(cls.id) : CHIP_COLORS[0];
+    // Highlight matching text
+    const highlightName = query
+      ? s.name.replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark style="background:#FEF08A;border-radius:3px;padding:0 2px;">${m}</mark>`)
+      : s.name;
+    const highlightRoll = query
+      ? (s.roll_number||'—').toString().replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark style="background:#FEF08A;border-radius:3px;padding:0 2px;">${m}</mark>`)
+      : (s.roll_number||'—');
     return `<tr>
-      <td>${s.roll_number || '—'}</td>
-      <td><strong>${s.name}</strong></td>
-      <td><span class="badge badge-blue">${cls?.name || '—'}</span></td>
+      <td><strong>${highlightRoll}</strong></td>
+      <td>${highlightName}</td>
+      <td>
+        <span style="display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:${c.bg};color:${c.text};border:1.5px solid ${c.border};">
+          ${cls?.name || '—'}
+        </span>
+      </td>
       <td style="color:var(--ink2)">${s.mobile || '—'}</td>
       <td>
         <button class="btn-danger" onclick="deleteStudent('${s.id}')">🗑</button>
@@ -1134,9 +1189,13 @@ function renderStudentView() {
     </tr>`;
   }).join('');
 
+  const total = filtered.length;
   $('allStudentsWrap').innerHTML = `
     <table>
-      <thead><tr><th>Roll</th><th>Name</th><th>Class</th><th>Mobile</th><th></th></tr></thead>
+      <thead><tr>
+        <th>Roll</th><th>Name</th><th>Class</th><th>Mobile</th>
+        <th style="text-align:right;color:var(--ink3);font-weight:500;">${total} student${total!==1?'s':''}</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
