@@ -769,7 +769,7 @@ async function doLogin() {
 
   try {
     // Fetch school by code
-    const schools = await api(`schools?code=eq.${code}&select=id,name,code,clerk_otp`);
+    const schools = await api(`schools?code=eq.${code}&select=id,name,code,clerk_otp,clerk_otp_expires_at`);
     if (!schools || schools.length === 0) {
       throw new Error('School code not found. Please check and try again.');
     }
@@ -779,6 +779,18 @@ async function doLogin() {
     }
     if (school.clerk_otp.trim() !== otp) {
       throw new Error('Incorrect OTP. Please ask your principal for the correct password.');
+    }
+
+    // Check OTP expiry (12-hour window)
+    if (school.clerk_otp_expires_at) {
+      const expiresAt = new Date(school.clerk_otp_expires_at);
+      if (new Date() > expiresAt) {
+        const expiredAt = expiresAt.toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true,
+        });
+        throw new Error('This OTP expired at ' + expiredAt + '. Please ask your Principal to generate a new one from the app.');
+      }
     }
 
     // Logged in!
