@@ -325,7 +325,7 @@
   /* Preview rows */
   .preview-row {
     display: grid;
-    grid-template-columns: 40px 1fr 100px 120px 60px;
+    grid-template-columns: 40px 1fr 90px 110px 140px 50px;
     gap: 8px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
@@ -424,6 +424,7 @@
 
   @media (max-width: 600px) {
     .preview-row { grid-template-columns: 28px 1fr 80px 80px 40px; font-size: 12px; }
+    .preview-row .col-email { display: none; }
     .page { padding: 24px 14px 60px; }
     .card { padding: 20px; }
   }
@@ -606,13 +607,16 @@
         </div>
         <div style="padding:0 16px 0;" id="previewRows"></div>
         <div style="padding:16px 20px; border-top:1px solid var(--border);">
-          <div id="importAlert" class="hidden"></div>
           <button class="btn-primary" id="importBtn" onclick="doImport()">
             <span id="importBtnText">Import Students</span>
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Import result message — lives outside previewSection so it's still visible
+         after a successful import hides the preview card above. -->
+    <div id="importAlert" class="hidden" style="margin-top:14px;"></div>
 
   </div>
 
@@ -1004,19 +1008,14 @@ function handleClassExcel(e) {
 }
 
 function downloadClassTemplate() {
-  // Headers only — no sample data rows
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['ClassName', 'Section (Optional)'],
-  ]);
-
-  // Bold both header cells
-  const boldStyle = { font: { bold: true } };
-  ws['A1'] = { v: 'ClassName',           t: 's', s: boldStyle };
-  ws['B1'] = { v: 'Section (Optional)',  t: 's', s: boldStyle };
-
-  // Column widths
-  ws['!cols'] = [{ wch: 20 }, { wch: 20 }];
-
+  const data = [
+    { ClassName: '10-A', Section: '' },
+    { ClassName: '10-B', Section: '' },
+    { ClassName: '11',   Section: 'Science' },
+    { ClassName: '12',   Section: 'Commerce' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 18 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Classes');
   XLSX.writeFile(wb, 'classes_template.xlsx');
@@ -1069,11 +1068,32 @@ function handleStudentExcel(e) {
 
       pendingRows = rows.map((row, idx) => {
         const n = {};
-        Object.keys(row).forEach(k => { n[k.toLowerCase().trim().replace(/[\s_.]/g,'')] = String(row[k]).trim(); });
-        const name   = n['name'] || n['studentname'] || n['fullname'] || '';
-        const roll   = n['rollno'] || n['rollnumber'] || n['roll'] || '';
-        const mobile = n['mobileno'] || n['mobile'] || n['phone'] || '';
-        const email  = n['email'] || n['emailaddress'] || '';
+        Object.keys(row).forEach(k => {
+          // Strip EVERYTHING except letters/digits (not just ASCII parentheses).
+          // Real-world header cells vary a lot: "MobileNo (Parents)", "Mobile No.",
+          // "Mobile/WhatsApp No", "E-Mail ID", or even curly/full-width punctuation
+          // pasted in from Word/WhatsApp ("Email（Optional）"). Any of these used to
+          // survive into the key and silently fail the old exact-match lookup, which
+          // is why mobile/email would import blank without any visible error.
+          const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          n[cleanKey] = String(row[k]).trim();
+        });
+        // Look for an exact key first, then fall back to "key contains this keyword"
+        // so annotated/reworded headers (e.g. "mobilenoparents", "contactnumber",
+        // "emailoptional", "emailid") still get picked up correctly.
+        const findField = (exactKeys, containsKeys) => {
+          for (const ek of exactKeys) if (n[ek]) return n[ek];
+          for (const key of Object.keys(n)) {
+            for (const ck of containsKeys) {
+              if (key.includes(ck)) return n[key];
+            }
+          }
+          return '';
+        };
+        const name   = findField(['name', 'studentname', 'fullname'], ['name']);
+        const roll   = findField(['rollno', 'rollnumber', 'roll'], ['roll']);
+        const mobile = findField(['mobileno', 'mobile', 'phone'], ['mobile', 'phone', 'contact', 'whatsapp']);
+        const email  = findField(['email', 'emailaddress'], ['email', 'mail']);
         const issues = [];
         if (!name) issues.push('Missing name');
         if (!roll) issues.push('Missing roll number');
@@ -1084,6 +1104,19 @@ function handleStudentExcel(e) {
           willImport: issues.length === 0 && !isDup,
           rowNum: idx + 2,
         };
+      });
+
+      // Clerks often type/paste rows in whatever order they have the paper list,
+      // not roll-number order — sort ascending by roll number before preview/import.
+      // Rows with a missing or non-numeric roll (already flagged as invalid above)
+      // are pushed to the end rather than breaking the sort.
+      pendingRows.sort((a, b) => {
+        const an = parseFloat(a.roll), bn = parseFloat(b.roll);
+        const aValid = !isNaN(an), bValid = !isNaN(bn);
+        if (aValid && bValid) return an - bn;
+        if (aValid) return -1;
+        if (bValid) return 1;
+        return 0;
       });
 
       renderPreview();
@@ -1112,7 +1145,7 @@ function renderPreview() {
   $('importBtnText').textContent = `Import ${ok} Student${ok !== 1 ? 's' : ''} into ${selectedUploadClass.name}`;
 
   const header = `<div class="preview-row header">
-    <span>#</span><span>Name</span><span>Roll No</span><span>Mobile</span><span></span>
+    <span>#</span><span>Name</span><span>Roll No</span><span>Mobile</span><span class="col-email">Email</span><span></span>
   </div>`;
 
   const rowHtml = pendingRows.map((r, i) => {
@@ -1124,6 +1157,7 @@ function renderPreview() {
       <span><strong>${r.name || '<em>—</em>'}</strong>${note ? `<br><small style="font-size:11px;">${note}</small>` : ''}</span>
       <span>${r.roll || '—'}</span>
       <span style="color:var(--ink2)">${r.mobile || '—'}</span>
+      <span class="col-email" style="color:var(--ink2)">${r.email || '—'}</span>
       <span>${icon}</span>
     </div>`;
   }).join('');
@@ -1177,22 +1211,13 @@ async function doImport() {
 
 function downloadStudentTemplate() {
   const cls = selectedUploadClass?.name || 'YourClass';
-
-  // Headers only — no sample data rows
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['RollNo', 'Name', 'MobileNo (Parents)', 'Email (Optional)'],
-  ]);
-
-  // Bold all header cells
-  const boldStyle = { font: { bold: true } };
-  ws['A1'] = { v: 'RollNo',              t: 's', s: boldStyle };
-  ws['B1'] = { v: 'Name',                t: 's', s: boldStyle };
-  ws['C1'] = { v: 'MobileNo (Parents)',  t: 's', s: boldStyle };
-  ws['D1'] = { v: 'Email (Optional)',    t: 's', s: boldStyle };
-
-  // Column widths
-  ws['!cols'] = [{ wch: 10 }, { wch: 24 }, { wch: 22 }, { wch: 22 }];
-
+  const data = [
+    { RollNo: 101, Name: 'Arjun Singh',  MobileNo: '9876543201', Email: 'arjun@school.com' },
+    { RollNo: 102, Name: 'Priya Sharma', MobileNo: '9876543202', Email: '' },
+    { RollNo: 103, Name: 'Rahul Gupta',  MobileNo: '',           Email: '' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 14 }, { wch: 26 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students');
   XLSX.writeFile(wb, `students_${cls.replace(/\s+/g,'_')}_template.xlsx`);
@@ -1509,7 +1534,7 @@ function buildShortageHTML(cls, subjectStats, studentData) {
 
 '</body></html>';
 }
- 
+
 </script>
 </body>
 </html>
