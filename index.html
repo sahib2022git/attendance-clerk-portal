@@ -787,6 +787,22 @@ const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const isHidden = id => $(id).classList.contains('hidden');
 
+// SEC-005: anything from the database or an uploaded Excel file is escaped
+// before it goes into HTML. jsq() is for a value passed inside an inline
+// onclick handler (used in place of '…' quotes).
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const jsq = v => esc(JSON.stringify(String(v == null ? '' : v)));
+
+// Escaped text with case-insensitive matches of `query` wrapped in <mark>.
+function highlightMatch(text, query) {
+  const safe = esc(text);
+  if (!query) return safe;
+  const pattern = esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(pattern, 'gi'),
+    m => `<mark style="background:#FEF08A;border-radius:3px;padding:0 2px;">${m}</mark>`);
+}
+
 function showAlert(elId, msg, type = 'error') {
   const el = $(elId);
   el.className = `alert alert-${type}`;
@@ -958,12 +974,12 @@ function renderClassTable() {
     return `<tr>
       <td>
         <span style="display:inline-block;padding:4px 14px;border-radius:100px;font-size:13px;font-weight:700;background:${c.bg};color:${c.text};border:1.5px solid ${c.border};">
-          ${cls.name}
+          ${esc(cls.name)}
         </span>
       </td>
       <td><span class="badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};">${count} student${count !== 1 ? 's' : ''}</span></td>
       <td>
-        <button class="btn-danger" onclick="deleteClass('${cls.id}')">🗑 Delete</button>
+        <button class="btn-danger" onclick="deleteClass(${jsq(cls.id)})">🗑 Delete</button>
       </td>
     </tr>`;
   }).join('');
@@ -1039,7 +1055,7 @@ function renderClassChips() {
     const style = isActive
       ? `background:${c.activeBg};border-color:${c.activeBg};color:#fff;box-shadow:0 3px 10px rgba(0,0,0,0.18);transform:scale(1.05);font-weight:800;`
       : `background:${c.bg};border-color:${c.border};color:${c.text};`;
-    return `<div class="chip" style="${style}" onclick="selectUploadClass('${cls.id}')">${cls.name}</div>`;
+    return `<div class="chip" style="${style}" onclick="selectUploadClass(${jsq(cls.id)})">${esc(cls.name)}</div>`;
   }).join('');
 }
 
@@ -1157,12 +1173,12 @@ function renderPreview() {
     const cls = r.isDup ? 'dup' : r.issues.length > 0 ? 'err' : 'ok';
     const icon = r.willImport ? '✓' : r.isDup ? '⊘' : '✗';
     const note = r.isDup ? 'Duplicate' : r.issues.join(', ');
-    return `<div class="preview-row ${cls}" title="${note}">
+    return `<div class="preview-row ${cls}" title="${esc(note)}">
       <span style="color:var(--ink3)">${i+1}</span>
-      <span><strong>${r.name || '<em>—</em>'}</strong>${note ? `<br><small style="font-size:11px;">${note}</small>` : ''}</span>
-      <span>${r.roll || '—'}</span>
-      <span style="color:var(--ink2)">${r.mobile || '—'}</span>
-      <span class="col-email" style="color:var(--ink2)">${r.email || '—'}</span>
+      <span><strong>${r.name ? esc(r.name) : '<em>—</em>'}</strong>${note ? `<br><small style="font-size:11px;">${esc(note)}</small>` : ''}</span>
+      <span>${esc(r.roll || '—')}</span>
+      <span style="color:var(--ink2)">${esc(r.mobile || '—')}</span>
+      <span class="col-email" style="color:var(--ink2)">${esc(r.email || '—')}</span>
       <span>${icon}</span>
     </div>`;
   }).join('');
@@ -1230,7 +1246,7 @@ function updateFilterClassDropdown() {
   const sel = $('filterClass');
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Classes</option>' +
-    classes.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${c.name}</option>`).join('');
+    classes.map(c => `<option value="${esc(c.id)}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
 }
 
 function renderStudentView() {
@@ -1260,24 +1276,20 @@ function renderStudentView() {
   const rows = filtered.map(s => {
     const cls = classes.find(c => c.id === s.class_id);
     const c = cls ? classColor(cls.id) : CHIP_COLORS[0];
-    // Highlight matching text
-    const highlightName = query
-      ? s.name.replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark style="background:#FEF08A;border-radius:3px;padding:0 2px;">${m}</mark>`)
-      : s.name;
-    const highlightRoll = query
-      ? (s.roll_number||'—').toString().replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark style="background:#FEF08A;border-radius:3px;padding:0 2px;">${m}</mark>`)
-      : (s.roll_number||'—');
+    // Highlight matching text (escaped first — see highlightMatch)
+    const highlightName = highlightMatch(s.name, query);
+    const highlightRoll = highlightMatch(s.roll_number || '—', query);
     return `<tr>
       <td><strong>${highlightRoll}</strong></td>
       <td>${highlightName}</td>
       <td>
         <span style="display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:${c.bg};color:${c.text};border:1.5px solid ${c.border};">
-          ${cls?.name || '—'}
+          ${esc(cls?.name || '—')}
         </span>
       </td>
-      <td style="color:var(--ink2)">${s.mobile || '—'}</td>
+      <td style="color:var(--ink2)">${esc(s.mobile || '—')}</td>
       <td>
-        <button class="btn-danger" onclick="deleteStudent('${s.id}')">🗑</button>
+        <button class="btn-danger" onclick="deleteStudent(${jsq(s.id)})">🗑</button>
       </td>
     </tr>`;
   }).join('');
@@ -1349,7 +1361,7 @@ function renderShortageClassChips() {
     const style = isActive
       ? `background:${c.activeBg};border-color:${c.activeBg};color:#fff;box-shadow:0 3px 10px rgba(0,0,0,0.18);transform:scale(1.05);font-weight:800;`
       : `background:${c.bg};border-color:${c.border};color:${c.text};`;
-    return `<div class="chip" style="${style}" onclick="selectShortageClass('${cls.id}')">${cls.name}</div>`;
+    return `<div class="chip" style="${style}" onclick="selectShortageClass(${jsq(cls.id)})">${esc(cls.name)}</div>`;
   }).join('');
 }
 
@@ -1443,7 +1455,7 @@ function buildShortageHTML(cls, subjectStats, studentData) {
   // Subject column headers (name + total in parentheses)
   const subjectHeaders = subjectStats.map(sub =>
     '<th style="padding:10px 12px;border:1px solid #3730a3;text-align:center;min-width:90px;">' +
-      sub.name + '<br/>' +
+      esc(sub.name) + '<br/>' +
       '<span style="font-size:10px;font-weight:400;opacity:0.8;">(Total: ' + sub.totalLectures + ')</span>' +
     '</th>'
   ).join('');
@@ -1460,8 +1472,8 @@ function buildShortageHTML(cls, subjectStats, studentData) {
     const totalColor  = s.totalShortage > 0 ? '#dc2626' : '#16a34a';
     const totalBorder = s.totalShortage > 0 ? 'border-left:3px solid #dc2626;' : 'border-left:3px solid #16a34a;';
     return '<tr style="background:' + rowBg + ';' + totalBorder + '">' +
-             '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#1e1b4b;">' + s.roll_number + '</td>' +
-             '<td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">' + s.name + '</td>' +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#1e1b4b;">' + esc(s.roll_number) + '</td>' +
+             '<td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">' + esc(s.name) + '</td>' +
              subCells +
              '<td style="padding:9px 12px;border:1px solid #e2e8f0;text-align:center;font-weight:800;color:' + totalColor + ';background:' + (s.totalShortage > 0 ? '#fef2f2' : '#f0fdf4') + ';">' +
                (s.totalShortage > 0 ? s.totalShortage : 'Nil') +
@@ -1498,8 +1510,8 @@ function buildShortageHTML(cls, subjectStats, studentData) {
 '</style></head><body>' +
 
 '<div class="hdr">' +
-  '<div class="school-name">' + (session && session.schoolName ? session.schoolName : 'School Attendance Report') + '</div>' +
-  '<div class="rpt-title">&#128202; Shortage Report &mdash; ' + cls.name + '</div>' +
+  '<div class="school-name">' + (session && session.schoolName ? esc(session.schoolName) : 'School Attendance Report') + '</div>' +
+  '<div class="rpt-title">&#128202; Shortage Report &mdash; ' + esc(cls.name) + '</div>' +
   '<div class="meta-row">' +
     '<div>Generated on: <span class="meta-val">' + displayDate + '</span></div>' +
     '<div>Total Students: <span class="meta-val">' + studentData.length + '</span></div>' +
@@ -1531,7 +1543,7 @@ function buildShortageHTML(cls, subjectStats, studentData) {
 '</div>' +
 
 '<div class="footer">' +
-  '<div>This report was generated by the Students Attendance App (Clerk Portal). Class: ' + cls.name + '</div>' +
+  '<div>This report was generated by the Students Attendance App (Clerk Portal). Class: ' + esc(cls.name) + '</div>' +
 '</div>' +
 
 '</body></html>';
